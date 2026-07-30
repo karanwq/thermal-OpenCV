@@ -18,152 +18,538 @@ INDEX_HTML = """
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Thermal OpenCV</title>
+    <title>Thermal OpenCV // Detection Unit</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
       :root {
         color-scheme: dark;
-        --bg: #0b1020;
-        --panel: #121a2e;
-        --border: #25304b;
-        --text: #e8edf7;
-        --muted: #9fb0d0;
-        --accent: #67d1ff;
-        --accent-2: #ff9f43;
+        --bg: #050a0a;
+        --bg-grid: #081112;
+        --panel: #0b1415;
+        --panel-2: #0e191b;
+        --border: #1c3235;
+        --border-bright: #2b4d51;
+        --text: #d8ece9;
+        --muted: #6f9591;
+        --faint: #3f5c59;
+        --hot: #ff6a1a;
+        --hot-dim: #7a3717;
+        --cold: #22d3ee;
+        --danger: #ff4444;
+        --warn: #ffb020;
+        --safe: #2fe08a;
+        --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+        --display: "Space Grotesk", Arial, sans-serif;
       }
+
+      * { box-sizing: border-box; }
+
       body {
         margin: 0;
         min-height: 100vh;
-        background: linear-gradient(160deg, #08101d 0%, #10172b 55%, #1b1020 100%);
+        background:
+          radial-gradient(circle at 15% 0%, rgba(255, 106, 26, 0.08), transparent 40%),
+          radial-gradient(circle at 85% 15%, rgba(34, 211, 238, 0.06), transparent 45%),
+          repeating-linear-gradient(0deg, var(--bg-grid) 0px, var(--bg-grid) 1px, var(--bg) 1px, var(--bg) 28px),
+          var(--bg);
         color: var(--text);
-        font-family: Arial, sans-serif;
+        font-family: var(--display);
       }
+
       .wrap {
-        max-width: 960px;
+        max-width: 1080px;
         margin: 0 auto;
-        padding: 32px 20px 48px;
+        padding: 28px 20px 56px;
       }
+
+      /* ---------- Header ---------- */
+      .hud-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        color: var(--faint);
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 26px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .hud-bar .dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--safe);
+        margin-right: 8px;
+        box-shadow: 0 0 8px var(--safe);
+      }
+
       .hero {
-        padding: 24px 0 20px;
+        padding: 6px 0 28px;
       }
+
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        letter-spacing: 0.18em;
+        color: var(--hot);
+        text-transform: uppercase;
+        margin: 0 0 12px;
+      }
+
       h1 {
-        margin: 0 0 10px;
-        font-size: 2rem;
-        line-height: 1.1;
+        margin: 0 0 12px;
+        font-size: clamp(2rem, 5vw, 2.9rem);
+        line-height: 1.05;
+        font-weight: 700;
+        letter-spacing: -0.01em;
       }
-      p {
-        margin: 0 0 16px;
+
+      h1 span {
+        color: var(--hot);
+      }
+
+      .hero p {
+        margin: 0;
+        max-width: 56ch;
         color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.55;
       }
-      .panel {
-        background: rgba(18, 26, 46, 0.92);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
-      }
+
+      /* ---------- Layout ---------- */
       .grid {
         display: grid;
         gap: 20px;
         grid-template-columns: 1fr;
       }
-      .controls {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        align-items: center;
+
+      @media (min-width: 900px) {
+        .grid {
+          grid-template-columns: 320px 1fr;
+          align-items: start;
+        }
       }
-      input[type="file"] {
+
+      .panel {
+        background: linear-gradient(180deg, var(--panel-2), var(--panel));
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
         color: var(--muted);
       }
-      button {
-        appearance: none;
-        border: 0;
-        border-radius: 8px;
-        padding: 10px 16px;
-        background: linear-gradient(90deg, var(--accent), var(--accent-2));
-        color: #04101b;
-        font-weight: 700;
+
+      .panel-head .tag {
+        color: var(--cold);
+      }
+
+      .panel-body {
+        padding: 18px 16px;
+      }
+
+      /* ---------- Upload form ---------- */
+      .dropzone {
+        position: relative;
+        border: 1px dashed var(--border-bright);
+        border-radius: 4px;
+        padding: 28px 14px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.15s ease, background 0.15s ease;
+        background: rgba(255, 106, 26, 0.02);
+      }
+
+      .dropzone:hover,
+      .dropzone.drag {
+        border-color: var(--hot);
+        background: rgba(255, 106, 26, 0.06);
+      }
+
+      .dropzone input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
         cursor: pointer;
       }
-      .note {
-        font-size: 0.95rem;
+
+      .dropzone .glyph {
+        font-family: var(--mono);
+        font-size: 1.6rem;
+        color: var(--hot);
+        margin-bottom: 8px;
+        line-height: 1;
+      }
+
+      .dropzone .primary {
+        font-size: 0.92rem;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+
+      .dropzone .filename {
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        color: var(--cold);
+        margin-top: 8px;
+        word-break: break-all;
+        min-height: 1em;
+      }
+
+      .dropzone .hint {
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        color: var(--faint);
+        letter-spacing: 0.04em;
+      }
+
+      button.submit {
+        appearance: none;
+        border: 0;
+        width: 100%;
+        margin-top: 14px;
+        border-radius: 4px;
+        padding: 12px 16px;
+        background: var(--hot);
+        color: #150900;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 0.8rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background 0.15s ease, transform 0.05s ease;
+      }
+
+      button.submit:hover { background: #ff7d38; }
+      button.submit:active { transform: scale(0.99); }
+      button.submit:disabled { background: var(--hot-dim); color: var(--muted); cursor: progress; }
+
+      button.submit:focus-visible,
+      .dropzone:focus-within {
+        outline: 2px solid var(--cold);
+        outline-offset: 2px;
+      }
+
+      .local-note {
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+        font-size: 0.78rem;
+        color: var(--faint);
+        line-height: 1.5;
+      }
+
+      .local-note code {
+        font-family: var(--mono);
         color: var(--muted);
+        background: rgba(255,255,255,0.04);
+        padding: 1px 5px;
+        border-radius: 3px;
       }
-      .image-box {
-        border: 1px solid var(--border);
-        border-radius: 10px;
+
+      /* ---------- Viewfinder / output ---------- */
+      .viewfinder {
+        position: relative;
+        background: #020505;
+        min-height: 320px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         overflow: hidden;
-        background: #050913;
       }
+
+      .viewfinder::before,
+      .viewfinder::after,
+      .vf-corner-a,
+      .vf-corner-b {
+        content: "";
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        border: 2px solid var(--hot);
+        opacity: 0.85;
+        z-index: 2;
+      }
+
+      .viewfinder::before { top: 10px; left: 10px; border-right: 0; border-bottom: 0; }
+      .viewfinder::after { top: 10px; right: 10px; border-left: 0; border-bottom: 0; }
+      .vf-corner-a { bottom: 10px; left: 10px; border-right: 0; border-top: 0; }
+      .vf-corner-b { bottom: 10px; right: 10px; border-left: 0; border-top: 0; }
+
+      .vf-scan {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--cold), transparent);
+        opacity: 0.65;
+        animation: scan 3.4s linear infinite;
+        z-index: 3;
+        pointer-events: none;
+      }
+
+      @keyframes scan {
+        0% { top: 4%; }
+        50% { top: 94%; }
+        100% { top: 4%; }
+      }
+
+      .image-box {
+        width: 100%;
+      }
+
       .image-box img {
         display: block;
         width: 100%;
         height: auto;
       }
-      .label {
-        padding: 10px 14px;
-        font-size: 0.9rem;
+
+      .empty-state {
+        text-align: center;
+        padding: 40px 24px;
+        color: var(--faint);
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        letter-spacing: 0.06em;
+      }
+
+      .empty-state .big {
+        font-size: 2rem;
+        margin-bottom: 10px;
+        color: var(--border-bright);
+      }
+
+      /* ---------- Readout / detections table ---------- */
+      .readout {
+        border-top: 1px solid var(--border);
+        font-family: var(--mono);
+      }
+
+      .readout-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 16px;
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
         color: var(--muted);
+        background: rgba(255,255,255,0.02);
+      }
+
+      .readout-head .count {
+        color: var(--hot);
+      }
+
+      table.det-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8rem;
+      }
+
+      table.det-table th {
+        text-align: left;
+        font-weight: 500;
+        font-size: 0.65rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--faint);
+        padding: 8px 16px;
         border-bottom: 1px solid var(--border);
       }
-      .detections {
-        padding: 10px 14px;
-        font-size: 0.85rem;
-        color: var(--muted);
-        border-top: 1px solid var(--border);
+
+      table.det-table td {
+        padding: 9px 16px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
       }
-      .detections ul {
-        margin: 6px 0 0;
-        padding-left: 18px;
+
+      table.det-table tr:last-child td { border-bottom: 0; }
+
+      .swatch {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 2px;
+        margin-right: 8px;
+        vertical-align: middle;
       }
-      @media (min-width: 840px) {
-        .grid {
-          grid-template-columns: 360px 1fr;
-          align-items: start;
-        }
+
+      .swatch.close { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+      .swatch.mid { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+      .swatch.far { background: var(--safe); box-shadow: 0 0 6px var(--safe); }
+      .swatch.unknown { background: var(--faint); }
+
+      .no-detections {
+        padding: 18px 16px;
+        color: var(--faint);
+        font-size: 0.8rem;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .vf-scan { animation: none; top: 50%; }
       }
     </style>
   </head>
   <body>
     <main class="wrap">
+      <div class="hud-bar">
+        <span><span class="dot"></span>SYS.STATUS &mdash; MODEL LOADED &mdash; INFERENCE READY</span>
+        <span>THERM-01 // OBJECT DETECTION UNIT</span>
+      </div>
+
       <section class="hero">
-        <h1>Thermal OpenCV</h1>
-        <p>Upload an image and Render will return a thermal-style OpenCV preview with YOLO object detection and estimated distance overlays.</p>
+        <p class="eyebrow">Thermal vision &middot; YOLO detection &middot; distance estimation</p>
+        <h1>Upload a frame.<br>See what it <span>sees</span>.</h1>
+        <p>Run any image through a pseudo-thermal render with live object detection overlaid &mdash; class, confidence, and estimated distance banded by proximity.</p>
       </section>
 
       <section class="grid">
-        <form class="panel" method="post" action="/process" enctype="multipart/form-data">
-          <div class="controls">
-            <input type="file" name="image" accept="image/*" required>
-            <button type="submit">Render thermal</button>
+        <div class="panel">
+          <div class="panel-head">
+            <span>Source</span>
+            <span class="tag">01</span>
           </div>
-          <p class="note">For live webcam tracking, run <code>thermal_cam.py</code> locally on your machine instead.</p>
-        </form>
+          <div class="panel-body">
+            <form method="post" action="/process" enctype="multipart/form-data" id="scan-form">
+              <label class="dropzone" id="dropzone">
+                <input type="file" name="image" accept="image/*" required id="file-input">
+                <div class="glyph">&#9670;</div>
+                <div class="primary">Drop image or click to browse</div>
+                <div class="hint">JPG &middot; PNG &middot; WEBP</div>
+                <div class="filename" id="filename"></div>
+              </label>
+              <button type="submit" class="submit" id="submit-btn">Render thermal scan</button>
+            </form>
+            <div class="local-note">
+              For live webcam tracking with persistent object IDs, run <code>thermal_cam.py</code> locally instead of this web uploader.
+            </div>
+          </div>
+        </div>
 
         <div class="panel">
+          <div class="panel-head">
+            <span>Output</span>
+            <span class="tag">02</span>
+          </div>
+          <div class="viewfinder">
+            {% if image_data %}
+              <div class="vf-scan"></div>
+              <div class="image-box">
+                <img src="data:image/png;base64,{{ image_data }}" alt="Thermal processed image with detections">
+              </div>
+            {% else %}
+              <div class="empty-state">
+                <div class="big">&#9671;</div>
+                AWAITING INPUT &mdash; SELECT AN IMAGE TO BEGIN SCAN
+              </div>
+            {% endif %}
+          </div>
+
           {% if image_data %}
-            <div class="label">Thermal output</div>
-            <div class="image-box">
-              <img src="data:image/png;base64,{{ image_data }}" alt="Thermal processed image with detections">
+          <div class="readout">
+            <div class="readout-head">
+              <span>Detections</span>
+              <span class="count">{{ detections|length }} object{{ 's' if detections|length != 1 else '' }}</span>
             </div>
-            <div class="detections">
-              {% if detections %}
-                Detected {{ detections|length }} object(s):
-                <ul>
+            {% if detections %}
+            <table class="det-table">
+              <thead>
+                <tr>
+                  <th>Class</th>
+                  <th>Range</th>
+                  <th>Confidence</th>
+                </tr>
+              </thead>
+              <tbody>
                 {% for d in detections %}
-                  <li>{{ d.label }} &mdash; {{ '%.2f'|format(d.distance) + 'm' if d.distance is not none else 'distance n/a' }} (conf {{ '%.2f'|format(d.confidence) }})</li>
+                <tr>
+                  <td>
+                    {% if d.distance is none %}
+                      <span class="swatch unknown"></span>
+                    {% elif d.distance < 4 %}
+                      <span class="swatch close"></span>
+                    {% elif d.distance < 12 %}
+                      <span class="swatch mid"></span>
+                    {% else %}
+                      <span class="swatch far"></span>
+                    {% endif %}
+                    {{ d.label|upper }}
+                  </td>
+                  <td>{{ '%.2f'|format(d.distance) + 'm' if d.distance is not none else 'N/A' }}</td>
+                  <td>{{ '%.0f'|format(d.confidence * 100) }}%</td>
+                </tr>
                 {% endfor %}
-                </ul>
-              {% else %}
-                No objects detected above the confidence threshold.
-              {% endif %}
-            </div>
-          {% else %}
-            <p class="note">No image processed yet.</p>
+              </tbody>
+            </table>
+            {% else %}
+            <div class="no-detections">No objects cleared the confidence threshold on this frame.</div>
+            {% endif %}
+          </div>
           {% endif %}
         </div>
       </section>
     </main>
+
+    <script>
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('file-input');
+      const filenameEl = document.getElementById('filename');
+      const form = document.getElementById('scan-form');
+      const submitBtn = document.getElementById('submit-btn');
+
+      function showFilename() {
+        if (fileInput.files && fileInput.files[0]) {
+          filenameEl.textContent = fileInput.files[0].name;
+        }
+      }
+
+      fileInput.addEventListener('change', showFilename);
+
+      ['dragenter', 'dragover'].forEach(evt => {
+        dropzone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          dropzone.classList.add('drag');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(evt => {
+        dropzone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          dropzone.classList.remove('drag');
+        });
+      });
+
+      dropzone.addEventListener('drop', (e) => {
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          fileInput.files = e.dataTransfer.files;
+          showFilename();
+        }
+      });
+
+      form.addEventListener('submit', () => {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Analyzing frame...';
+      });
+    </script>
   </body>
 </html>
 """
