@@ -2,7 +2,6 @@
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 from base64 import b64encode
-from pathlib import Path
 
 import cv2
 import numpy as np
@@ -11,6 +10,8 @@ from flask import Flask, render_template_string, request
 from ultralytics import YOLO
 
 app = Flask(__name__)
+if not torch.cuda.is_available():
+    torch.set_num_threads(1)
 
 INDEX_HTML = """
 <!doctype html>
@@ -166,6 +167,17 @@ INDEX_HTML = """
       }
 
       /* ---------- Upload form ---------- */
+      .error-banner {
+        margin: 0 0 14px;
+        padding: 10px 14px;
+        border: 1px solid var(--danger);
+        background: rgba(255, 68, 68, 0.08);
+        color: #ffb3b3;
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        border-radius: 4px;
+      }
+
       .dropzone {
         position: relative;
         border: 1px dashed var(--border-bright);
@@ -429,6 +441,9 @@ INDEX_HTML = """
             <span class="tag">01</span>
           </div>
           <div class="panel-body">
+            {% if error %}
+            <div class="error-banner">ERR &mdash; {{ error }}</div>
+            {% endif %}
             <form method="post" action="/process" enctype="multipart/form-data" id="scan-form">
               <label class="dropzone" id="dropzone">
                 <input type="file" name="image" accept="image/*" required id="file-input">
@@ -687,13 +702,12 @@ def thermalize_image(image: np.ndarray) -> np.ndarray:
     if image is None or image.size == 0:
         raise ValueError("No image data provided.")
 
-    if image.shape[2] == 4:
-        image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
-
-    if image.shape[2] == 3:
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    else:
+    if image.ndim == 2:
         gray = image
+    else:
+        if image.shape[2] == 4:
+            image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     thermal_base = cv2.applyColorMap(gray, cv2.COLORMAP_JET)
     edges = cv2.Canny(gray, 40, 120)
@@ -723,9 +737,6 @@ def detect_and_annotate(thermal: np.ndarray, image: np.ndarray):
             xmin, ymin, xmax, ymax = xyxy[i]
             confidence = float(confs[i])
             object_name = model.names[int(cls_ids[i])]
-
-            if confidence <= CONF_THRESHOLD:
-                continue
 
             box_width = xmax - xmin
             box_height = ymax - ymin
@@ -778,21 +789,41 @@ def encode_png(image: np.ndarray) -> str:
 
 @app.get("/")
 def index():
-    return render_template_string(INDEX_HTML, image_data=None, detections=None)
+    return render_template_string(INDEX_HTML, image_data=None, detections=None, error=None)
 
 
 @app.post("/process")
 def process():
     uploaded = request.files.get("image")
     if not uploaded or uploaded.filename == "":
-        return render_template_string(INDEX_HTML, image_data=None, detections=None)
+        return render_template_string(
+            INDEX_HTML, image_data=None, detections=None,
+            error="No file was uploaded. Please choose an image first."
+        )
 
-    raw = np.frombuffer(uploaded.read(), dtype=np.uint8)
-    image = cv2.imdecode(raw, cv2.IMREAD_COLOR)
-    thermal = thermalize_image(image)
-    thermal, detections = detect_and_annotate(thermal, image)
-    image_data = encode_png(thermal)
-    return render_template_string(INDEX_HTML, image_data=image_data, detections=detections)
+    try:
+        raw = np.frombuffer(uploaded.read(), dtype=np.uint8)
+        if raw.size == 0:
+            raise ValueError("The uploaded file is empty.")
+
+        image = cv2.imdecode(raw, cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError(
+                "Could not read that file as an image. Please upload a JPG, PNG, or WEBP."
+            )
+
+        thermal = thermalize_image(image)
+        thermal, detections = detect_and_annotate(thermal, image)
+        image_data = encode_png(thermal)
+        return render_template_string(
+            INDEX_HTML, image_data=image_data, detections=detections, error=None
+        )
+    except Exception as exc:
+        # Any decode/inference failure now surfaces as a friendly banner
+        # instead of crashing the request with a raw 500 error.
+        return render_template_string(
+            INDEX_HTML, image_data=None, detections=None, error=str(exc)
+        ), 400
 
 
 @app.get("/health")
@@ -803,4 +834,6 @@ def health():
 if __name__ == "__main__":
     # Warm up the model at startup in dev mode so the first request isn't slow.
     get_model()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # use_reloader=False avoids loading the YOLO model twice (once in the
+    # main process, once in Flask's debug auto-reloader subprocess).
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
